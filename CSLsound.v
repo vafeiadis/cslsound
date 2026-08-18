@@ -1,4 +1,5 @@
-Require Import HahnBase ZArith List Basic Lang.
+From Coq Require Import ZArith Lia List.
+Require Import HahnBase Basic Lang.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -312,7 +313,7 @@ Lemma safe_mon :
     safe m C s h J Q.
 Proof.
   intros until m; revert C s n h OK; induction m; ins; unnw.
-  destruct n; [exfalso; omega|apply le_S_n in LEQ].
+  destruct n; [exfalso; lia|apply le_S_n in LEQ].
   clarify; simpls; des; repeat split; ins. 
   exploit SOK; eauto; ins; des; eauto 10. 
 Qed. 
@@ -381,8 +382,9 @@ Proof.
   by eapply NAB, aborts_agrees; eauto; red; symmetry; eauto.
   by eapply AOK; eauto; erewrite accesses_agrees; unfold agrees; eauto.
 
-  exploit prop2; eauto; intro M; des; simpls; clarify. 
-  exploit red_agrees; try apply STEP; [symmetry; eapply A, X|by left|].
+
+  forward eapply prop2; eauto; intro M; des; simpls; clarify. 
+  forward eapply red_agrees; try apply STEP; [symmetry; eapply A, X|by left|].
   clear STEP; intros (s'0 & _ & STEP & A' & <-). 
   exploit SOK; eauto; [by eapply prop1_As, SAT; ins; eauto| ins; des]. 
   clarify; repeat eexists; eauto.
@@ -416,7 +418,8 @@ Lemma safe_skip :
 Proof.
   by induction n; inss; [inv ABORT |inv STEP].
 Qed.
-Hint Resolve safe_skip.
+
+Hint Resolve safe_skip : core.
 
 Theorem rule_skip J P : CSL J P Cskip P.
 Proof. by split; auto. Qed.
@@ -438,7 +441,6 @@ Lemma safe_par:
 Proof.
   induction n; inss.
   {  (* No aborts *)
-   
     rewrite hdef_hplus, hplusA in *; des; inv ABORT; eauto.
     by rewrite hplusAC in A; [eapply NAB, A|]; eauto.
     (* No races *)
@@ -463,7 +465,8 @@ Proof.
     destruct (prop2 R) as (B1 & B2 & B3).
     eapply IHn; repeat split; eauto using red_wf_cmd;
       try (by unfold disjoint, pred_of_list in *; ins; eauto 3).
-    apply safe_agrees with s; [by eapply safe_mon, le_n_Sn|].
+
+    apply safe_agrees with s; [by eapply safe_mon with (n := S n); eauto; ins|].
     by symmetry; apply B3; unfold disjoint in *; des; eauto.
   - (* C2 does a step *)
     rewrite envs_app2 in *; auto.
@@ -477,7 +480,7 @@ Proof.
     destruct (prop2 R) as (B1 & B2 & B3).
     eapply IHn; repeat split; eauto using red_wf_cmd;
       try (by unfold disjoint, pred_of_list in *; ins; eauto 3).
-    apply safe_agrees with s; [by eapply safe_mon, le_n_Sn|]. 
+    apply safe_agrees with s; [by eapply safe_mon with (n := S n); eauto; ins|]. 
     by symmetry; apply B3; unfold disjoint in *; des; eauto. 
   - (* Par skip skip *)
     exists (hplus h1 h2), hJ; rewrite hplusA; repeat split; eauto.
@@ -684,16 +687,16 @@ Lemma safe_while:
   forall J P B C (OK: CSL J (Aconj P (Apure B)) C P) s h (SAT_P: sat (s, h) P) n,
     safe n (Cwhile B C) s h J (Aconj P (Apure (Bnot B))).
 Proof.
-  intros; revert s h SAT_P; generalize (le_refl n); generalize n at -2 as m.
-  induction n; destruct m; ins; [inv H|apply le_S_n in H]. 
+  intros; revert s h SAT_P.
+  assert (X: n <= n) by done; revert X; generalize n at -2 as m.
+  induction n; destruct m; ins; desf; try lia.
   unnw; intuition; desf; [by inv ABORT|].
   inv STEP; repeat eexists; eauto; simpl.
   destruct m; ins; desf; unnw; intuition; desf; [by inv ABORT|].
   inv STEP0; repeat eexists; eauto; simpls.
   - by rewrite (user_cmd_locked (proj1 OK)) in *.
-  - by eapply safe_seq; [eapply OK|by apply OK|]; simpls; eauto using le_trans.
+  - eapply safe_seq; try eapply OK; ins; eapply IHn; eauto; lia.
   - by apply safe_skip; simpls; clarify.
-(*  eapply rule_if, SAT_P; [eapply rule_seq|apply rule_skip]; eauto. *)
 Qed.
 
 Theorem rule_while J P B C :
@@ -847,4 +850,3 @@ Theorem rule_conj J P1 P2 C Q1 Q2:
 Proof.
   unfold CSL; inss; eauto using safe_conj.
 Qed.
-

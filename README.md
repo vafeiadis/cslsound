@@ -2,7 +2,8 @@
 
 This repository contains soundness proofs for CSL (Concurrent Separation Logic) and RGSep, 
 two program logics for reasoning about the correctness of concurrent programs.
-The soundness proofs are carried out using the [Coq proof assistant](https://coq.inria.fr) version 8.6.
+The soundness proofs are carried out using the [Rocq proof
+assistant](https://rocq-prover.org) version 8.20.1
 
 * HahnBase.v : Basic tactics (copied from the [Hahn](https://github.com/vafeiadis/hahn) library)
 * Basic.v : Definition of heaps and basic lemmas about lists

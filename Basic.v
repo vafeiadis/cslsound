@@ -1,4 +1,5 @@
-Require Import HahnBase ZArith List.
+From Coq Require Import ZArith List.
+Require Import HahnBase.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -47,8 +48,8 @@ Corollary hdef_hplus_b :
   forall h1 h2 h3, hdef h1 h2 -> hdef h1 h3 -> hdef h1 (hplus h2 h3).
 Proof. by intros; apply hdef_hplus2. Qed.
 
-Hint Resolve hdef_hplus_a hdef_hplus_b.
-Hint Immediate hdefC.
+Hint Resolve hdef_hplus_a hdef_hplus_b : core.
+Hint Immediate hdefC : core.
 
 Lemma hplusA : 
  forall h1 h2 h3, hplus (hplus h1 h2) h3 = hplus h1 (hplus h2 h3).
@@ -170,7 +171,7 @@ Proof. by unfold disjoint. Qed.
 Lemma disjoint_nil2 A (l : list A) : disjoint l nil.
 Proof. by unfold disjoint. Qed.
 
-Hint Resolve disjoint_nil disjoint_nil2.
+Hint Resolve disjoint_nil disjoint_nil2 : core.
 
 Lemma disjoint_list_app :
   forall A (l1 l2 : list A), disjoint_list l1 -> disjoint_list l2 -> disjoint l1 l2 -> 

@@ -1,5 +1,7 @@
 Require Import HahnBase ZArith List Basic.
 
+Ltac intuition_solver ::= auto.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -299,11 +301,13 @@ Proof.
   by induction c; simpl; intuition;
      repeat match goal with H: _ = nil |- _ => rewrite H end.
 Qed.
-Hint Immediate user_cmd_locked.
+
+Hint Immediate user_cmd_locked : core.
 
 Lemma user_cmd_wf: forall c, user_cmd c -> wf_cmd c.
 Proof. pose proof user_cmdD; firstorder. Qed.
-Hint Immediate user_cmd_wf.
+
+Hint Immediate user_cmd_wf : core.
 
 Lemma locked_locks: forall r c, In r (locked c) -> In r (locks c).
 Proof.
@@ -420,13 +424,15 @@ Definition agrees (X : list rname) (s s' : stack) := forall x, In x X -> s x = s
 Lemma agrees_union: 
   forall X Y s s', agrees (X ++ Y) s s' <-> (agrees X s s' /\ agrees Y s s').
 Proof.
-  unfold agrees; intuition; eapply in_app_iff in H; intuition.
+  unfold agrees; repeat split; ins; desf.
+  all: specialize (H x); desf.
+  all: rewrite in_app_iff in *; desf; eauto.
 Qed.
 
 Lemma agreesC: forall X x y, agrees X x y -> agrees X y x.
 Proof. unfold agrees; intuition (symmetry; eauto). Qed.
 
-Hint Immediate agreesC.
+Hint Immediate agreesC : core.
 
 Lemma agrees_tl: forall X Y x y, agrees (X :: Y) x y -> agrees Y x y.
 Proof. red; intros; eapply H; vauto. Qed.
@@ -437,7 +443,7 @@ Proof. red; intros; eapply H, in_app_iff; vauto. Qed.
 Lemma agrees_app2: forall X Y x y, agrees (X ++ Y) x y -> agrees Y x y.
 Proof. red; intros; eapply H, in_app_iff; vauto. Qed.
 
-Hint Immediate agrees_app1 agrees_app2.
+Hint Immediate agrees_app1 agrees_app2 : core.
 
 Lemma agrees_imp: forall X Y x y, agrees X x y -> (forall z, In z Y -> In z X) -> agrees Y x y.
 Proof. red; intros; eapply H; eauto. Qed.

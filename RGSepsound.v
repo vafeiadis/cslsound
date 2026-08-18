@@ -1,5 +1,7 @@
-Require Import HahnBase ZArith List Basic Lang CSLsound.
-Require Import Classical.
+From Coq Require Import ZArith Lia List Classical.
+Require Import HahnBase Basic Lang CSLsound.
+
+Ltac intuition_solver ::= auto.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -201,14 +203,14 @@ Lemma RGsafe_agrees :
     (A: forall v, In v (fvC C) \/ fvAA Q v -> s v = s' v),
     RGsafe n C s' h hh R G Q.
 Proof.
-  induction n; ins; des; intuition; clarify.
+  induction n; ins; des; intuition auto; clarify.
   by apply -> prop1_AA; eauto.
   by eapply OK0, aborts_agrees; eauto; red; symmetry; eauto.
   by eapply OK1; eauto; erewrite accesses_agrees; unfold agrees; eauto.
   by eapply IHn; try eapply OK2; eauto.
 
-  exploit prop2; eauto; intro M; des; simpls; clarify. 
-  exploit red_agrees; try apply STEP; [symmetry; eapply A, X|by left|].
+  forward eapply prop2; eauto; intro M; des; simpls; clarify. 
+  forward eapply red_agrees; try apply STEP; [symmetry; eapply A, X|by left|].
   clear STEP; intros (s'0 & _ & STEP & A' & <-). 
   exploit OK3; eauto; []; ins; des. 
   exists h', hh'; repeat eexists; eauto.
@@ -238,11 +240,12 @@ Lemma RGsafe_skip :
     RGsat (s,h,hh) Q -> stable Q nil R -> 
     RGsafe n Cskip s h hh R G Q.
 Proof.
-  induction n; ins; intuition; [inv ABORT|eauto|inv STEP].
+  induction n; ins; splits; ins; desf; [inv ABORT|eauto|inv STEP].
   apply IHn; auto.
   eapply H0; eauto; ins; specialize (RELY r); tauto.
 Qed.
-Hint Resolve RGsafe_skip.
+
+Hint Resolve RGsafe_skip : core.
 
 Theorem rule_skip Rely Guar P : stable P nil Rely -> RGSep Rely Guar P Cskip P.
 Proof. by split; auto. Qed.
@@ -279,8 +282,8 @@ Lemma disjC A (a b : list A) :
 Proof.
   unfold Basic.disjoint; eauto.
 Qed.
-Hint Immediate disjC.
 
+Hint Immediate disjC : core.
 
 Lemma hdef_hplus_list A h hh (l: list A) : 
   hdef h (hplus_list (map hh l)) <-> (forall r (IN: In r l), hdef h (hh r)).
@@ -334,9 +337,9 @@ Proof.
   by eapply in_app_iff in ACC; unfold hplus in *; desf; eauto.
 }
 { (* Rely *)
-  eapply (IHn); eauto.
-  - eapply LOK2; ins; specialize (RELY r NEQ); intuition; eauto with hdef_search. 
-  - eapply ROK2; ins; specialize (RELY r NEQ); intuition; eauto with hdef_search. 
+  eapply (IHn); eauto; [eapply LOK2|eapply ROK2].
+  all: ins; specialize (RELY r NEQ).
+  all: rewrite in_app_iff in *; desf; splits; eauto with hdef_search.
 }
 { (* Step *)
   rewrite hdef_hplus, hplusA in *; des.
@@ -362,7 +365,7 @@ Proof.
       intros; rewrite In_list_minus in *.
       by specialize (Dh' r); rewrite !hdef_hplus in Dh'; tauto.
     
-    exploit (ROK2 hh'); ins; rewrite ?In_app in *; desf; eauto.
+    forward eapply (ROK2 hh'); ins; rewrite ?In_app in *; desf; eauto.
        intros; destruct (In_dec Z.eq_dec r (list_minus Z.eq_dec (locked C1) (locked c1'))).
          by intuition; rewrite In_list_minus in *; desf; eauto.
        by rewrite In_list_minus in *; desf; destruct NEQ; apply GOTH; tauto.
@@ -402,7 +405,7 @@ Proof.
       intros; rewrite In_list_minus in *.
       by specialize (Dh' r); rewrite !hdef_hplus in Dh'; tauto. 
    
-    exploit (LOK2 hh'); ins; rewrite ?In_app in *; desf; eauto.
+    forward eapply (LOK2 hh'); ins; rewrite ?In_app in *; desf; eauto.
        intros; destruct (In_dec Z.eq_dec r (list_minus Z.eq_dec (locked C2) (locked c2'))).
          by intuition; rewrite In_list_minus in *; desf; eauto.
        by rewrite In_list_minus in *; desf; rewrite GOTH in *; vauto; tauto.
@@ -605,7 +608,7 @@ Proof.
       rewrite hplusU2 in *; repeat eexists; eauto.
       by eapply prop1_AA_rgn; [|edone]; intros; unfold upd; desf.
    
-    exploit (B2 (upd hh' r (hh r))).
+    forward eapply (B2 (upd hh' r (hh r))).
       ins; specialize (RELY r0); unfold upd in *; rewrite hdef_hplus in *; desf; tauto.
     intro M; specialize (IHn _ (hh' r) M); rewrite upds, updr, updr' in IHn; tauto. 
   }
@@ -643,7 +646,7 @@ Proof.
    
     exists (hplus h' (hh' r)), (upd hh' r hK). 
     rewrite map_upd_irr, RGdef_upd_irr; try (rewrite In_removeAll; tauto).
-    rewrite hplusA; repeat eexists; ins; eauto; instantiate; repeat rewrite In_removeAll in *.
+    rewrite hplusA; repeat eexists; ins; eauto; repeat rewrite In_removeAll in *.
    
     rewrite (hplus_list_expand (r:=r)), hplusA; try done.
       by eauto using disjoint_list_list_minus, disjoint_locked, red_wf_cmd.
@@ -690,7 +693,7 @@ Lemma RGsafe_frame:
    (SAT_R: RGsat (s,hR,hh) R),
  RGsafe n C s (hplus h hR) hh Rely Guar (RGstar Q R).
 Proof.
-  intros until 0; revert C s h hh.
+  intros *; revert C s h hh.
   induction n; ins; desf; intuition; rewrite ?hdef_hplus, ?hplusA in *; desf; eauto.
     by eauto 8.
     by unfold hplus in *; desf; eauto.
@@ -767,11 +770,10 @@ Proof.
   - eapply IHn; eauto.
     eapply PS; eauto; ins; specialize (RELY r0); tauto.  
   - inv STEP.
-    exploit (A (S n)); eauto; intros (_ & _ & _ & _ & OK).
-    exploit OK; eauto; clear -QS; intro M; desf; simpls.
+    forward eapply (A (S n)) as (_ & _ & _ & _ & OK); eauto.
+    forward eapply OK as M; eauto; clear -QS M; desf; simpls.
     rewrite M; repeat eexists; eauto using RGsafe_inwith_rely_irr.
 Qed.
-
 
 Theorem rule_with Rely Guar P p r B C Q q:
   RGSep Rely Guar (RGstar P (RGlocal (Aconj p (Apure B)))) C (RGstar Q (RGlocal q))  ->
@@ -804,7 +806,7 @@ Proof.
   exists (hplus h1 (hh r)), hh; repeat eexists; ins; auto.
     by rewrite hplusU, hplusU2, hplusA.
   clear STEP.
-  exploit (A n); [by repeat eexists; eauto|]; intro OK; revert OK.
+  forward eapply (A n) as OK; [by repeat eexists; eauto|]; revert OK.
   assert (WF: ~ In r (locked C)) by (rewrite (user_cmd_locked U); done).
   generalize (hplus h1 (hh r)) as h; clear - FR REQ QS WF DISJ IN_GUAR H3.
   rename H3 into SAT_P.
@@ -916,25 +918,25 @@ Proof.
   unfold stable; ins; intuition eauto.
 Qed.
 
-Hint Resolve stable_conj stable_local.
-
+Hint Resolve stable_conj stable_local : core.
 
 Lemma RGsafe_while:
   forall Rely Guar P B C (OK: RGSep Rely Guar (RGconj P (RGlocal (Apure B))) C P) 
     s h hh (SAT_P: RGsat (s, h, hh) P) (STAB: stable P nil Rely) n,
     RGsafe n (Cwhile B C) s h hh Rely Guar (RGconj P (RGlocal (Apure (Bnot B)))).
 Proof.
-  intros; revert s h hh SAT_P; generalize (le_refl n); generalize n at -2 as m.
-  induction n; destruct m; ins; [by inv H| apply le_S_n in H].
+  intros; revert s h hh SAT_P.
+  assert (X: n <= n) by done; revert X; generalize n at -2 as m.
+  induction n; destruct m; ins; try lia.
   intuition; desf; [by inv ABORT| |].
-    by eapply IHn, STAB; eauto; ins; specialize (RELY r); tauto.
+    by eapply IHn, STAB; eauto; ins; try lia; specialize (RELY r); tauto.
   inv STEP; repeat eexists; eauto; simpls. 
   clear STEP Dh.
     destruct (bdenot B s) eqn:?; 
       eapply red_det_tau; ins; desf; vauto; eauto using user_cmd_locked;
-     try (by inv STEP'; simpls; clarify); try (by intro X; inv X); simpls.
+     try (by inv STEP'; simpls; clarify); try (by intro Y; inv Y); simpls.
    by apply user_cmd_locked; destruct OK.
-   by eapply RGsafe_seq; try apply OK; ins; eauto using le_trans. 
+   by eapply RGsafe_seq; try apply OK; ins; eapply IHn; eauto; lia.
   apply RGsafe_skip; simpls; clarify; auto.
 Qed.
 
@@ -953,7 +955,7 @@ Lemma sat_envs_noneD :
     sat (s, h) (envs (fun _ : rname => None) l l') -> 
     h = (fun x => None).
 Proof.
-  intros until 0; unfold envs.
+  intros *; unfold envs.
   generalize (list_minus Z.eq_dec l l'); clear l l'; intro l.
   revert h; induction l; ins; desf; extensionality x; try done.
   by rewrite (IHl _ H0), hplusU2.
@@ -980,7 +982,7 @@ Proof.
        rewrite H in *; destruct (locks c'); simpls; exfalso; eauto.
   rewrite (no_locks_locked H), (no_locks_locked NOL) in *; simpls.
 
-  exploit (SOK (fun _ => None)); vauto; eauto. 
+  forward eapply (SOK (fun _ => None)); vauto; eauto. 
     by rewrite (no_locks_locked NOL).
   intro M; desf.
   rewrite (no_locks_locked NOL) in *; simpls.
